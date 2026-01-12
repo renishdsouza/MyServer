@@ -62,7 +62,7 @@ int main() {
 
       // Client closed connection or error occurred
       if (read_n <= 0) {
-        printf("[INFO] Client disconnected. Closing server\n");
+        printf("[INFO] Client disconnected.\n");
         close(conn_sock_fd);
         break;
       }

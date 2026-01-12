@@ -47,32 +47,34 @@ int main() {
   struct sockaddr_in client_addr;//for storing the data of the client.
   socklen_t client_addr_len;///client addr
 
-  // Accept client connection
-  int conn_sock_fd = accept(listen_sock_fd, (struct sockaddr *)&client_addr, &client_addr_len);
-  printf("[INFO] Client connected to server\n");
+  while(1){
+    // Accept client connection
+    int conn_sock_fd = accept(listen_sock_fd, (struct sockaddr *)&client_addr, &client_addr_len);
+    printf("[INFO] Client connected to server\n");
 
-  while (1) {
-    // Create buffer to store client message
-    char buff[BUFF_SIZE];
-    memset(buff, 0, BUFF_SIZE);
+    while (1) {
+      // Create buffer to store client message
+      char buff[BUFF_SIZE];
+      memset(buff, 0, BUFF_SIZE);
 
-    // Read message from client to buffer
-    ssize_t read_n = recv(conn_sock_fd, buff, sizeof(buff), 0);
+      // Read message from client to buffer
+      ssize_t read_n = recv(conn_sock_fd, buff, sizeof(buff), 0);
 
-    // Client closed connection or error occurred
-    if (read_n <= 0) {
-      printf("[INFO] Client disconnected. Closing server\n");
-      close(conn_sock_fd);
-      exit(1);
+      // Client closed connection or error occurred
+      if (read_n <= 0) {
+        printf("[INFO] Client disconnected. Closing server\n");
+        close(conn_sock_fd);
+        break;
+      }
+
+      // Print message from client
+      printf("[CLIENT MESSAGE] %s", buff);
+
+      // Sting reverse
+      strrev(buff);
+
+      // Sending reversed string to client
+      send(conn_sock_fd, buff, read_n, 0);
     }
-
-    // Print message from client
-    printf("[CLIENT MESSAGE] %s", buff);
-
-    // Sting reverse
-    strrev(buff);
-
-    // Sending reversed string to client
-    send(conn_sock_fd, buff, read_n, 0);
   }
 }

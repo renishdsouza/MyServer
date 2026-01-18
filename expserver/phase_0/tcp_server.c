@@ -50,11 +50,6 @@ int main() {
   socklen_t client_addr_len;///client addr
 
   while(1){
-    // Accept client connection
-    // int conn_sock_fd = accept(listen_sock_fd, (struct sockaddr *)&client_addr, &client_addr_len);
-    // printf("[INFO] Client connected to server\n");
-
-    /* previous code till listen() */
 
     /* epoll setup */
     int epoll_fd = epoll_create1(0);

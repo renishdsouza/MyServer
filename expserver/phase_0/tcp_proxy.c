@@ -28,16 +28,43 @@ void strrev(char *str) {
   }
 }
 
+int find_socket(int in_fd, int type){
+  if(!type){
+    for(int i=0; i<route_table_size; i++){
+      if(route_table[i][0] == in_fd){
+        return route_table[i][1];
+      }
+    }
+  }
+  else{
+    for(int i=0; i<route_table_size; i++){
+      if(route_table[i][1] == in_fd){
+        return route_table[i][0];
+      }
+    }
+  }
+  return -1;
+}
+
+void loop_attach(int epoll_fd, int fd, int events) {
+  /* attach fd to epoll */
+  struct epoll_event event;
+  event.events = events;
+  event.data.fd = fd;/* listen socket FD */
+
+  /* adding listening socket to epoll */
+  epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd/* listen socket FD */, &event);
+}
+
 int connect_upstream() {
 
   int upstream_sock_fd = socket(AF_INET, SOCK_STREAM, 0);/* create a upstrem socket */
 
   struct sockaddr_in upstream_addr;
   /* add upstream server details */
-  upstream_addr.sin_addr.s_addr = hton(INADDR_ANY);
+  upstream_addr.sin_addr.s_addr = htonl(INADDR_ANY);
   upstream_addr.sin_family = AF_INET;
-  upstream_addr.sin_port = htonl(UPSTREAM_PORT);
-
+  upstream_addr.sin_port = htons(UPSTREAM_PORT);
 
   connect(upstream_sock_fd,(struct sockaddr *) &upstream_addr, sizeof(upstream_addr)/* connect to upstream server */);
 
@@ -52,17 +79,17 @@ void accept_connection(int listen_sock_fd) {
   int conn_sock_fd = accept(listen_sock_fd, (struct sockaddr *) &client_address, &client_address_len);/* accept client connection */
 
   /* add conn_sock_fd to loop using loop_attach() */
-  loop_attach(epoll_fd, listen_sock_fd, listen_sock_fd);
+  loop_attach(epoll_fd, conn_sock_fd, EPOLLIN);
 
   // create connection to upstream server
   int upstream_sock_fd = connect_upstream();
 
   /* add upstream_sock_fd to loop using loop_attach() */
-  loop_attach(epoll_fd, listen_sock_fd, listen_sock_fd);
+  loop_attach(epoll_fd, upstream_sock_fd, EPOLLIN);
 
   // add conn_sock_fd and upstream_sock_fd to routing table
   route_table[route_table_size][0] = conn_sock_fd;/* fill this */
-  route_table[route_table_size][1] = listen_sock_fd;/* fill this */
+  route_table[route_table_size][1] = upstream_sock_fd;/* fill this */
   route_table_size += 1;
 
 }
@@ -75,16 +102,6 @@ int create_loop() {
 
   return epoll_fd;
 
-}
-
-void loop_attach(int epoll_fd, int fd, int events) {
-  /* attach fd to epoll */
-  struct epoll_event event;
-  event.events = EPOLLIN;
-  event.data.fd = events;/* listen socket FD */
-
-  /* adding listening socket to epoll */
-  epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd/* listen socket FD */, &event);
 }
 
 int create_server() {
@@ -114,6 +131,59 @@ int create_server() {
   return listen_sock_fd;
 }
 
+void handle_client(int conn_sock_fd) {
+
+  char buff[BUFF_SIZE];
+  memset(buff, 0, BUFF_SIZE);
+  int read_n = recv(conn_sock_fd, buff, sizeof(buff), 0);/* read message from client to buffer using recv */
+
+  // client closed connection or error occurred
+  if (read_n <= 0) {
+    close(conn_sock_fd);
+    return;
+  }
+
+  /* print client message (helpful for Milestone #2) */
+  printf("[INFO] Client message %s\n", buff);
+
+  /* find the right upstream socket from the route table */
+  int up_fd = find_socket(conn_sock_fd, 0);
+
+  // sending client message to upstream
+  int bytes_written = 0;
+  int message_len = read_n;
+  while (bytes_written < message_len) {
+    int n = send(up_fd/* found upstream socket */, buff + bytes_written, message_len - bytes_written, 0);
+    bytes_written += n;
+  }
+
+}
+
+void handle_upstream(int upstream_sock_fd) {
+
+  char buff[BUFF_SIZE];
+  memset(buff, 0, BUFF_SIZE);
+  int read_n = recv(upstream_sock_fd, buff, sizeof(buff), 0);/* read message from upstream to buffer using recv */
+
+  // Upstream closed connection or error occurred
+  if (read_n <= 0) {
+    close(upstream_sock_fd);
+    return;
+  }
+
+  /* find the right client socket from the route table */
+  int down_fd = find_socket(upstream_sock_fd, 1);
+
+  /* send upstream message to client */
+  int bytes_written = 0;
+  int message_len = read_n;
+  while(bytes_written < message_len){
+    int n = send(down_fd, buff+bytes_written, message_len-bytes_written, 0);
+    bytes_written += n;
+  }
+
+}
+
 void loop_run(int epoll_fd) {
   /* infinite loop and processing epoll events */
 
@@ -132,36 +202,13 @@ void loop_run(int epoll_fd) {
       int curr_fd = events[i].data.fd;
 
       if (curr_fd == listen_sock_fd/* event is on listen socket */) {
-
-        /* accept connection */
-        int client_sock_fd = accept(listen_sock_fd, (struct sockaddr *) &client_addr, &client_addr_len);
-
-        /* add client socket to epoll */
-        loop_attach(epoll_fd, client_sock_fd, client_sock_fd);
-
+        accept_connection(curr_fd);
       }
-      else if(curr_fd != upstream_socket) { // It is a connection socket
-
-        /* read message from client */
-        char buff[BUFF_SIZE];
-        memset(buff,0,BUFF_SIZE);
-        ssize_t read_n = recv(curr_fd, buff, sizeof(buff), 0);
-        
-        if(read_n <= 0){
-          printf("[INFO] Client disconnected.\n");
-          close(curr_fd);
-          // break; //idk about this I think the fd gets cancelled so no need to exit for loop
-        }
-
-        // Print message from client
-        printf("[CLIENT MESSAGE] %s", buff);
-
-        /* reverse message */
-        strrev(buff);
-
-        /* send reversed message to client */
-        send(curr_fd, buff, sizeof(buff), 0);
-
+      else if(find_socket(curr_fd, 0) >= 0) { // It is a connection socket
+        handle_client(curr_fd);
+      }
+      else{// event is on upstream socket
+        handle_upstream(curr_fd);
       }
     }
   }
@@ -169,13 +216,8 @@ void loop_run(int epoll_fd) {
 
 int main(){
   listen_sock_fd = create_server();
-
-  while(1){
-    epoll_fd = create_loop();
-
-    loop_attach(epoll_fd, listen_sock_fd, listen_sock_fd);
-
-    loop_run(epoll_fd);
-
-  }
+  epoll_fd = create_loop();
+  loop_attach(epoll_fd, listen_sock_fd, EPOLLIN);
+  loop_run(epoll_fd);
+  return 0;
 }

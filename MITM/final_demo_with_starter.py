@@ -30,10 +30,9 @@ def stop_sniffing(pkt):
 sniff(iface=IFACE, 
       filter=f"tcp port {PORT}", 
       prn=packet_callback, 
-      timeout=STABILIZE_TIME, # Initial wait
+      timeout=STABILIZE_TIME,
       store=0)
 
-# Check for stabilization
 while True:
     current_time = time.time()
     silence_duration = current_time - last_seen_time
@@ -52,7 +51,6 @@ if not last_packet:
 ip_layer = last_packet[IP]
 tcp_layer = last_packet[TCP]
 
-print("Last Packet INFO")
 print(f"{ip_layer.src}:{tcp_layer.sport} TO {ip_layer.dst}:{tcp_layer.dport}")
 print(f"SEQ {tcp_layer.seq}  ACK: {tcp_layer.ack}  Len {len(tcp_layer.payload)}")
 
@@ -62,13 +60,11 @@ print("[2] Server")
 choice = input("Enter 1 or 2 ")
 
 if tcp_layer.sport == PORT:
-    # packet was going to client
     server_ip, client_ip = ip_layer.src, ip_layer.dst
     server_port, client_port = tcp_layer.sport, tcp_layer.dport
     next_expected_by_client = tcp_layer.seq + len(tcp_layer.payload)
     next_expected_by_server = tcp_layer.ack
 else:
-    # packet was going to server
     client_ip, server_ip = ip_layer.src, ip_layer.dst
     client_port, server_port = tcp_layer.sport, tcp_layer.dport
     next_expected_by_server = tcp_layer.seq + len(tcp_layer.payload)

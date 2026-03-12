@@ -2,6 +2,7 @@
 #define XPS_UTILS_H
 
 #include "../xps.h"
+#include <fcntl.h>
 
 // Sockets
 bool is_valid_port(u_int port);

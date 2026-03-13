@@ -64,7 +64,7 @@ xps_listener_t *xps_listener_create(xps_core_t *core, const char *host, u_int po
   listener->sock_fd = sock_fd;/* fill this */
 
   // Attach listener to loop
-  xps_loop_attach(core->loop, sock_fd, EPOLLIN, listener, listener_connection_handler);
+  xps_loop_attach(core->loop, sock_fd, EPOLLIN, listener, listener_connection_handler, NULL, NULL);
 
   // Add listener to global listeners list
   vec_push(&core->listeners, listener);
@@ -112,6 +112,13 @@ void listener_connection_handler(void *ptr) {
   if (conn_sock_fd < 0) {
     logger(LOG_ERROR, "listener_connection_handler()", "accept() failed for listener on port %d due to %s. The sock_fd was %d", listener->port, strerror(errno), listener->sock_fd);
     perror("Error message");
+    return;
+  }
+
+  if(make_socket_non_blocking(conn_sock_fd) != OK) {
+    logger(LOG_ERROR, "listener_connection_handler()", "make_socket_non_blocking() failed for new connection on listener port %d", listener->port);
+    perror("Error message");
+    close(conn_sock_fd);
     return;
   }
 

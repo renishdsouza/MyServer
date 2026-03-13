@@ -1,5 +1,7 @@
 #include "../xps.h"
 // Function declaration for read callback of listener
+void connection_loop_close_handler(void *ptr);
+void connection_loop_write_handler(void *ptr);
 void connection_loop_read_handler(void *ptr);
 
 
@@ -12,6 +14,58 @@ void strrev(char *str) {
   }
 }
 
+void connection_loop_close_handler(void *ptr) {
+  assert(ptr != NULL);
+  xps_connection_t *connection = (xps_connection_t *)ptr;
+  logger(LOG_INFO, "connection_loop_close_handler()", "peer closed connection");
+  xps_connection_destroy(connection);
+}
+
+void connection_loop_write_handler(void *ptr) {
+  assert(ptr != NULL);
+  xps_connection_t *connection = (xps_connection_t *)ptr;
+
+  // Check if there is data to be written
+  if (connection->write_buff_list->len == 0) {
+    logger(LOG_DEBUG, "connection_loop_write_handler()", "no data to be written");
+    return;
+  }
+
+  // Read data from buffer list
+  xps_buffer_t *buff = xps_buffer_list_read(connection->write_buff_list, connection->write_buff_list->len);
+  if (buff == NULL) {
+    logger(LOG_ERROR, "connection_loop_write_handler()", "xps_buffer_list_read() failed");
+    return;
+  }
+
+  // Write data to client
+  ssize_t write_n = send(connection->sock_fd, buff->data, buff->len, 0);/* send data to client using send() */
+  logger(LOG_DEBUG, "connection_loop_write_handler()", "sent data to client");
+  if (write_n < 0) {
+    if(errno == EAGAIN || errno == EWOULDBLOCK) {
+      logger(LOG_DEBUG, "connection_loop_write_handler()", "send() would block");
+      xps_buffer_destroy(buff);
+      return;
+    }
+    else{
+      logger(LOG_ERROR, "connection_loop_write_handler()", "send() failed");
+      perror("Error message");
+      xps_connection_destroy(connection);
+      xps_buffer_destroy(buff);
+      return;
+    }
+  }
+  logger(LOG_DEBUG, "connection_loop_write_handler()", "sent %ld bytes to client", write_n);
+  // Clear written data from buffer list
+  if(write_n>0 && xps_buffer_list_clear(connection->write_buff_list, write_n) < 0) {
+    logger(LOG_ERROR, "connection_loop_write_handler()", "xps_buffer_list_clear() failed");
+    xps_connection_destroy(connection);
+    return;
+  }
+  logger(LOG_DEBUG, "connection_loop_write_handler()", "cleared written data from buffer list");
+  xps_buffer_destroy(buff);
+}
+
 void connection_loop_read_handler(void *ptr) {
 
   /* validate params */
@@ -20,6 +74,7 @@ void connection_loop_read_handler(void *ptr) {
 
   char buff[1024];
   long read_n = recv(connection->sock_fd, buff, sizeof(buff) - 1, 0);/* read data from client using recv() */
+
 
   if (read_n < 0) {
     logger(LOG_ERROR, "xps_connection_loop_read_handler()", "recv() failed");
@@ -42,19 +97,15 @@ void connection_loop_read_handler(void *ptr) {
   /* reverse client message */
   strrev(buff);
 
-  // Sending reversed message to client
-  long bytes_written = 0;
-  long message_len = read_n;
-  while (bytes_written < message_len) {
-    long write_n = send(connection->sock_fd, buff+bytes_written,message_len-bytes_written, 0);/* send message using send() */
-    if (write_n < 0) {
-      logger(LOG_ERROR, "xps_loop_connection_read_handler()", "send() failed");
-      perror("Error message");
-      xps_connection_destroy(connection);
-      return;
-    }
-    bytes_written += write_n;
+  /* append reversed message to write buffer list */
+  xps_buffer_t *write_buff_obj = xps_buffer_create(read_n, read_n, NULL);
+  memcpy(write_buff_obj->data, buff, read_n);
+  if (write_buff_obj == NULL) {
+    logger(LOG_ERROR, "xps_connection_loop_read_handler()", "xps_buffer_create() failed for 'write_buff_obj'");
+    return;
   }
+  xps_buffer_list_append(connection->write_buff_list, write_buff_obj);
+
 
 }
 
@@ -66,8 +117,15 @@ xps_connection_t *xps_connection_create(xps_core_t *core, u_int sock_fd){
     return NULL;
   }
 
+  connection->write_buff_list = xps_buffer_list_create();
+  if (connection->write_buff_list == NULL) {
+    logger(LOG_ERROR, "xps_connection_create()", "xps_buffer_list_create() failed");
+    free(connection);
+    return NULL;
+  }
+
   /* attach sock_fd to epoll */
-  xps_loop_attach(core->loop, sock_fd, EPOLLIN, connection, connection_loop_read_handler);
+  xps_loop_attach(core->loop, sock_fd, EPOLLIN | EPOLLOUT, connection, connection_loop_read_handler, connection_loop_write_handler, connection_loop_close_handler);
 
   // Init values
   connection->core = core;

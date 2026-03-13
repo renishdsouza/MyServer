@@ -9,6 +9,7 @@ struct xps_connection_s {
   u_int sock_fd;
   xps_listener_t *listener;
   char *remote_ip;
+  xps_buffer_list_t *write_buff_list;
 };
 
 

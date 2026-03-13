@@ -21,3 +21,7 @@ In utils #define OK 0 and #define E_FAIL -1 need to be added.
 ### Issues in stage_7
 You change some functions in .h files. The parameters are now changed, so change them in .c also. xps_listener_create. Remove epoll and make it core.
 The build.sh is also incomplete add new files or use this gcc -g -o xps $(find . -name "*.c")
+
+### Issues in stage_8
+Add structs and typedef for xps_buffer and include path to xps_buffer.h in xps.h.
+The make_socket_non_blocking function is already present.

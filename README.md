@@ -25,3 +25,8 @@ The build.sh is also incomplete add new files or use this gcc -g -o xps $(find .
 ### Issues in stage_8
 Add structs and typedef for xps_buffer and include path to xps_buffer.h in xps.h.
 The make_socket_non_blocking function is already present.
+
+docker compose use colon instead of hyphen 
+When we use docker the containers will not work when using localhost.
+Create .env.prod and copy the contents of.env.example in backend.
+for the backend path just do pwd and paste

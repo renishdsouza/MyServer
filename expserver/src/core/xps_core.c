@@ -68,7 +68,6 @@ void xps_core_start(xps_core_t *core) {
   /* validate params */
   assert(core != NULL);
 
-  logger(LOG_DEBUG, "xps_start()", "starting core");
 
   /* create listeners from port 8001 to 8004 */
   for (u_int i=8001; i<=8004; i++) {

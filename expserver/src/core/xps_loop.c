@@ -178,13 +178,66 @@ int xps_loop_detach(xps_loop_t *loop, u_int fd) {
   return OK;
 }
 
+bool handle_connections(xps_loop_t* loop) {
+  assert(loop != NULL);
+
+  for (int i=0; i<loop->core->connections.length; i++/*iterate through all the connections*/) {
+    logger(LOG_DEBUG, "handle_connections()", "checking connection no. %d for read/write readiness", i + 1);
+    if(loop->core->connections.data[i] == NULL){
+      continue;
+    }
+    xps_connection_t* connection = loop->core->connections.data[i]/*fill this*/;
+
+    if (connection->read_ready == true){
+      logger(LOG_DEBUG, "handle_connections()", "connection no. %d is ready for read", i + 1);
+      connection->recv_handler(connection);
+    }
+    logger(LOG_DEBUG, "handle_connections()", "checked connection no. %d for read readiness", i + 1);
+
+    //check if connection still exists
+    if(loop->core->connections.data[i] == NULL){
+      continue;
+    }
+
+    if (connection->write_ready == true && connection->write_buff_list->len > 0){
+      connection->send_handler(connection);
+    }
+  }
+
+  for (int i=0; i<loop->core->connections.length; i++/* iterate through all connections once again until we find a ready connection */) {
+    
+    /*check if connection is NULL and continue if it is*/
+    if(loop->core->connections.data[i] == NULL){
+      continue;
+    }
+    xps_connection_t* connection = loop->core->connections.data[i]/*fill this*/;
+
+    if (connection->read_ready == true){
+      return true;
+    }
+
+    if (connection->write_ready == true && connection->write_buff_list->len > 0){
+      return true;
+    }
+  }
+
+  return false;
+}
+
 void xps_loop_run(xps_loop_t *loop) {
   /* Validate params */
   assert(loop != NULL);
-
+  logger(LOG_DEBUG, "xps_loop_run()", "starting loop");
   while (1) {
+    bool has_ready_connection = handle_connections(loop);
+    /*set timeout to 0 if there are any ready connections else set to -1*/
+    int timeout = -1;
+    if(has_ready_connection){
+      timeout = 0;
+    }
+
     logger(LOG_DEBUG, "xps_loop_run()", "epoll wait");
-    int n_events = epoll_wait(loop->epoll_fd,loop->epoll_events, MAX_EPOLL_EVENTS, -1) ;/* fill epoll_wait() */
+    int n_events = epoll_wait(loop->epoll_fd,loop->epoll_events, MAX_EPOLL_EVENTS, timeout) ;/* fill epoll_wait() */
     logger(LOG_DEBUG, "xps_loop_run()", "epoll wait over");
 
     logger(LOG_DEBUG, "xps_loop_run()", "handling %d events", n_events);
@@ -206,7 +259,7 @@ void xps_loop_run(xps_loop_t *loop) {
       }
 
       //Close event
-      if (curr_epoll_event.events & EPOLLHUP) {
+      if (curr_epoll_event.events & ( EPOLLERR | EPOLLHUP)) {
         logger(LOG_DEBUG, "handle_epoll_events()", "EVENT / close");
         if (curr_event->close_cb != NULL){
           // Pass the ptr from loop_event_t as a parameter to the callback
@@ -217,7 +270,7 @@ void xps_loop_run(xps_loop_t *loop) {
       }
 
       // Write event
-      if (curr_epoll_event.events & EPOLLOUT) {
+      if (curr_epoll_event.events & EPOLLOUT ) {
         logger(LOG_DEBUG, "handle_epoll_events()", "EVENT / write");
         if (curr_event->write_cb != NULL){
           // Pass the ptr from loop_event_t as a parameter to the callback

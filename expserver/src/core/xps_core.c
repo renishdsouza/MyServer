@@ -72,7 +72,7 @@ void xps_core_start(xps_core_t *core) {
 
   /* create listeners from port 8001 to 8004 */
   for (u_int i=8001; i<=8004; i++) {
-    xps_listener_t *listener = xps_listener_create(core, "127.0.0.1", i);
+    xps_listener_t *listener = xps_listener_create(core, "0.0.0.0", i);
     if (listener == NULL) {
       logger(LOG_ERROR, "xps_core_start()", "xps_listener_create() failed for port %u", i);
       return;

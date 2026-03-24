@@ -64,7 +64,7 @@ xps_listener_t *xps_listener_create(xps_core_t *core, const char *host, u_int po
   listener->sock_fd = sock_fd;/* fill this */
 
   // Attach listener to loop
-  xps_loop_attach(core->loop, sock_fd, EPOLLIN, listener, listener_connection_handler, NULL, NULL);
+  xps_loop_attach(core->loop, sock_fd, EPOLLIN | EPOLLET, listener, listener_connection_handler, NULL, NULL);
 
   // Add listener to global listeners list
   vec_push(&core->listeners, listener);
@@ -104,11 +104,16 @@ void listener_connection_handler(void *ptr) {
   assert(ptr != NULL);
   xps_listener_t *listener = (xps_listener_t *)ptr;
 
+  while(1) {
   /* same code logic from xps_listener_connection_handler() */
   struct sockaddr conn_addr;
   socklen_t conn_addr_len = sizeof(conn_addr);
   // Accepting connection
   int conn_sock_fd = accept(listener->sock_fd, &conn_addr, &conn_addr_len);/* accept connection using accept() */
+  if( conn_sock_fd == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+    logger(LOG_DEBUG, "listener_connection_handler()", "no more incoming connections to accept");
+    break;
+  }
   if (conn_sock_fd < 0) {
     logger(LOG_ERROR, "listener_connection_handler()", "accept() failed for listener on port %d due to %s. The sock_fd was %d", listener->port, strerror(errno), listener->sock_fd);
     perror("Error message");
@@ -132,4 +137,5 @@ void listener_connection_handler(void *ptr) {
   client->listener = listener;
 
   logger(LOG_INFO, "listener_connection_handler()", "new connection");
+}
 }

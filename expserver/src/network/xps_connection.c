@@ -14,14 +14,26 @@ void strrev(char *str) {
   }
 }
 
-void connection_loop_close_handler(void *ptr) {
+void connection_close_handler(void *ptr) {
   assert(ptr != NULL);
   xps_connection_t *connection = (xps_connection_t *)ptr;
   logger(LOG_INFO, "connection_loop_close_handler()", "peer closed connection");
   xps_connection_destroy(connection);
 }
 
-void connection_loop_write_handler(void *ptr) {
+void connection_loop_read_handler(void* ptr) {
+    assert(ptr != NULL);
+	  /*set read_ready flag to true*/
+    ((xps_connection_t *)ptr)->read_ready = true;
+}
+
+void connection_loop_write_handler(void* ptr) {
+    assert(ptr != NULL);
+   /*set write_ready flag to true*/
+    ((xps_connection_t *)ptr)->write_ready = true;
+}
+
+void connection_write_handler(void *ptr) {
   assert(ptr != NULL);
   xps_connection_t *connection = (xps_connection_t *)ptr;
 
@@ -44,7 +56,7 @@ void connection_loop_write_handler(void *ptr) {
   if (write_n < 0) {
     if(errno == EAGAIN || errno == EWOULDBLOCK) {
       logger(LOG_DEBUG, "connection_loop_write_handler()", "send() would block");
-      xps_buffer_destroy(buff);
+      connection->write_ready = false;
       return;
     }
     else{
@@ -66,7 +78,7 @@ void connection_loop_write_handler(void *ptr) {
   xps_buffer_destroy(buff);
 }
 
-void connection_loop_read_handler(void *ptr) {
+void connection_read_handler(void *ptr) {
 
   /* validate params */
   assert(ptr != NULL);
@@ -79,8 +91,15 @@ void connection_loop_read_handler(void *ptr) {
   if (read_n < 0) {
     logger(LOG_ERROR, "xps_connection_loop_read_handler()", "recv() failed");
     perror("Error message");
-    xps_connection_destroy(connection);
-    return;
+    if( errno == EAGAIN || errno == EWOULDBLOCK) {
+      logger(LOG_DEBUG, "xps_connection_loop_read_handler()", "recv() would block");
+      connection->read_ready = false;
+      return;
+    }
+    else{ //if error is something else
+      xps_connection_destroy(connection);
+      return;
+    }
   }
 
   if (read_n == 0) {
@@ -125,13 +144,17 @@ xps_connection_t *xps_connection_create(xps_core_t *core, u_int sock_fd){
   }
 
   /* attach sock_fd to epoll */
-  xps_loop_attach(core->loop, sock_fd, EPOLLIN | EPOLLOUT, connection, connection_loop_read_handler, connection_loop_write_handler, connection_loop_close_handler);
+  xps_loop_attach(core->loop, sock_fd, EPOLLIN | EPOLLOUT | EPOLLET, connection, connection_read_handler, connection_write_handler, connection_loop_close_handler);
 
   // Init values
   connection->core = core;
   connection->sock_fd = sock_fd;
   connection->listener = NULL;
   connection->remote_ip = get_remote_ip(sock_fd);
+  connection->read_ready = false;
+  connection->write_ready = false;
+  connection->send_handler = connection_write_handler;
+  connection->recv_handler = connection_read_handler;
 
   /* add connection to 'connections' list */
   vec_push(&core->connections, connection);

@@ -50,28 +50,41 @@ int xps_pipe_source_write(xps_pipe_source_t *source, xps_buffer_t *buff) {
   /*assert source, buff not null*/
   assert(source != NULL);
   assert(buff != NULL);
+  logger(LOG_DEBUG, "xps_pipe_source_write()", "writing to pipe source");
 
   if (source->pipe == NULL/*Check if source not have a pipe*/) {
-  logger(LOG_ERROR, "xps_pipe_source_write()", "source is not attached to a pipe");
-  return E_FAIL;
+    logger(LOG_ERROR, "xps_pipe_source_write()", "source is not attached to a pipe");
+    return E_FAIL;
   }
 
-
+  logger(LOG_DEBUG, "xps_pipe_source_write()", "source is attached to a pipe");
   if (xps_pipe_is_writable(source->pipe) == false/*Check whether pipe is not writable*/) {
     logger(LOG_ERROR, "xps_pipe_source_write()", "pipe is not writable");
     return E_FAIL;
   }
-
+  logger(LOG_DEBUG, "xps_pipe_source_write()", "pipe is writable");
   // Duplicate buffer
   xps_buffer_t *dup_buff = xps_buffer_duplicate(buff);
+  logger(LOG_DEBUG, "xps_pipe_source_write()", "duplicated buffer");
   if (dup_buff == NULL) {
     logger(LOG_ERROR, "xps_pipe_source_write()", "xps_buffer_duplicate() failed");
     return E_FAIL;
   }
 
+  logger(LOG_DEBUG, "xps_pipe_source_write()", "appending duplicated buffer to pipe's buffer list");
+  if(source->pipe->buff_list == NULL){
+    logger(LOG_ERROR, "xps_pipe_source_write()", "pipe's buffer list is null");
+  }
+  logger(LOG_DEBUG, "DEBUG", "pipe=%p, buff_list=%p", source->pipe,source->pipe ? source->pipe->buff_list : NULL);
   /*Append dup_buff to buff_list of pipe*/
-  vec_push(&source->pipe->buff_list->list, dup_buff);
+  if(vec_push(&(source->pipe->buff_list->list), (void *)dup_buff) != 0){
+    logger(LOG_ERROR, "xps_pipe_source_write()", "vec_push() failed");
+    xps_buffer_destroy(dup_buff);
+    return E_FAIL;
+  }
+  logger(LOG_DEBUG, "xps_pipe_source_write()", "appended duplicated buffer to pipe's buffer list");
   source->pipe->buff_list->len+=buff->len;
+  logger(LOG_DEBUG, "xps_pipe_source_write()", "written data to pipe");
   return OK;
 }
 
@@ -158,7 +171,7 @@ xps_pipe_t *xps_pipe_create(xps_core_t *core, size_t buff_thresh, xps_pipe_sourc
   }
 
   /*Create buff_list instance*/
-  xps_buffer_list_t *buff_list = malloc(sizeof(xps_buffer_list_t));
+  xps_buffer_list_t *buff_list = xps_buffer_list_create();
   if (buff_list == NULL) {
     logger(LOG_ERROR, "xps_pipe_create()", "malloc() failed for 'buff_list'");
     free(pipe);
@@ -200,7 +213,7 @@ void xps_pipe_destroy(xps_pipe_t *pipe) {
   }
 
   /*Destroy the buff_list of pipe*/
-  free(pipe->buff_list);
+  xps_buffer_list_destroy(pipe->buff_list);
   /*Free the pipe*/
   free(pipe);
   logger(LOG_DEBUG, "xps_pipe_destroy()", "destroyed pipe");

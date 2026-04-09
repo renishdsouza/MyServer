@@ -131,8 +131,20 @@ void listener_connection_handler(void *ptr) {
     }
     client->listener = listener;
 
-    //Creates pipe for the connection created
-    xps_pipe_create(listener->core, DEFAULT_PIPE_BUFF_THRESH, client->source, client->sink);
+    // Handle connection based on listener port (upstream or direct)
+    if (listener->port == 8001) {
+      /* create upstream connection to 127.0.0.1:3000 */
+      xps_connection_t *upstream = xps_upstream_create(listener->core, "127.0.0.1", 3000);
+      /*create pipe connection to  client source and upstream sink for the listener*/
+      xps_pipe_create(listener->core, DEFAULT_PIPE_BUFF_THRESH, client->source, upstream->sink);
+      /*create pipe connection to upstream source and client sink for the listener*/
+      xps_pipe_create(listener->core, DEFAULT_PIPE_BUFF_THRESH, upstream->source, client->sink);
+    }
+    else {
+      /* same as previous stages*/
+      //Creates pipe for the connection created
+      xps_pipe_create(listener->core, DEFAULT_PIPE_BUFF_THRESH, client->source, client->sink);
+    }
 
     logger(LOG_INFO, "listener_connection_handler()", "new connection");
   }

@@ -37,3 +37,7 @@ As we are pushing it in xps_poll_attach, we do not need to push seperately in xp
 
 ### Issues in stage_10
 The modifications to xps_connection.c file are incomplete wherever there is an error due to bufflist and write_ready flag change it to source/sink->active and source/sink->pipe->buff_list.
+We are making pipes entries in core.h but in create core we are not creating vec_init of pipes please do that.
+
+### Issues in stage_11
+In close_cb we are only closing if sink and source active flags are false but we also call close_cb for source does not exist so instead of directly checking for flag first check for existenance of source.

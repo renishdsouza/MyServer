@@ -131,6 +131,9 @@ void listener_connection_handler(void *ptr) {
     }
     client->listener = listener;
 
+    //Creates pipe for the connection created
+    xps_pipe_create(listener->core, DEFAULT_PIPE_BUFF_THRESH, client->source, client->sink);
+
     logger(LOG_INFO, "listener_connection_handler()", "new connection");
   }
 }

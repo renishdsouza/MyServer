@@ -30,3 +30,10 @@ docker compose use colon instead of hyphen
 When we use docker the containers will not work when using localhost.
 Create .env.prod and copy the contents of.env.example in backend.
 for the backend path just do pwd and paste
+
+### Issues in stage_9
+We are pushing into global listeners twice and because of this even after the epoll modification we are still getting high CPU usage.
+As we are pushing it in xps_poll_attach, we do not need to push seperately in xps_listener_create.  // vec_push(&core->listeners, listener);
+
+### Issues in stage_10
+The modifications to xps_connection.c file are incomplete wherever there is an error due to bufflist and write_ready flag change it to source/sink->active and source/sink->pipe->buff_list.

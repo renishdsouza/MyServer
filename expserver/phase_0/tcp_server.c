@@ -14,14 +14,25 @@
 #define MAX_EPOLL_EVENTS 10
 
 // Function to reverse a string
-void strrev(char *str) {
+void strrev1(char *str) {
   for (int start = 0, end = strlen(str) - 2; start < end; start++, end--) {
     char temp = str[start];
     str[start] = str[end];
     str[end] = temp;
   }
+  str[strlen(str) - 1] = '\0'; // Remove the newline character added by fgets
+  // str[strlen(str) - 0] = '\0'; // Remove the carriage return character added by fgets
 }
+void strrev(char *str) {
+    int start = 0;
+    int end = strlen(str) - 2;
 
+    while (start < end) {
+        char temp = str[start];
+        str[start++] = str[end];
+        str[end--] = temp;
+    }
+}
 int main() {
   // Creating listening sock
   int listen_sock_fd = socket(AF_INET, SOCK_STREAM, 0);//AF_INET means IPv4. Sock stream is byte stream and 0 decides default here tcp.
@@ -81,6 +92,7 @@ int main() {
 
           /* add client socket to epoll */
           
+          event.events = EPOLLIN;
           event.data.fd = client_sock_fd;
           epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_sock_fd, &event);
 
@@ -90,14 +102,16 @@ int main() {
           /* read message from client */
           char buff[BUFF_SIZE];
           memset(buff,0,BUFF_SIZE);
-          ssize_t read_n = recv(curr_fd, buff, sizeof(buff), 0);
+          ssize_t read_n = recv(curr_fd, buff, sizeof(buff)-1, 0);
           
           if(read_n <= 0){
             printf("[INFO] Client disconnected.\n");
             close(curr_fd);
+            continue;
             // break; //idk about this I think the fd gets cancelled so no need to exit for loop
           }
 
+          buff[read_n] = '\0'; // Null-terminate the buffer
           // Print message from client
           printf("[CLIENT MESSAGE] %s", buff);
 
@@ -105,7 +119,7 @@ int main() {
           strrev(buff);
 
           /* send reversed message to client */
-          send(curr_fd, buff, sizeof(buff), 0);
+          send(curr_fd, buff, strlen(buff), 0);
 
         }
       }

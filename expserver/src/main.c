@@ -9,15 +9,24 @@ vec_void_t connections;
 int main() {
 
   epoll_fd = xps_loop_create();/* create an event loop instance using xps_loop_create() */
+void strrev(char *str) {
+  int start = 0;
+  int end = strlen(str) - 2;
 
+  while (start < end) {
+    char temp = str[start];
+    str[start++] = str[end];
+    str[end--] = temp;
+  }
+}
   // Init lists
   vec_init(&listeners);
   vec_init(&connections);
 
   // Create listeners on ports 8001, 8002, 8003
-  for (int port = 8001; port <= 8003; port++) {
+  for (int port = 8001; port <= 8004; port++) {
     /* create listener instance using xps_listener_create() */
-    xps_listener_create(epoll_fd, "127.0.0.1", port);
+    xps_listener_create(epoll_fd, "0.0.0.0", port);
     logger(LOG_INFO, "main()", "Server listening on port %u", port);
   }
 

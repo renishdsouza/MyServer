@@ -54,14 +54,29 @@ void xps_connection_destroy(xps_connection_t *connection) {
 }
 
 // Function to reverse a string
-void strrev(char *str) {
+void strrev1(char *str) {
   for (int start = 0, end = strlen(str) - 2; start < end; start++, end--) {
     char temp = str[start];
     str[start] = str[end];
     str[end] = temp;
   }
 }
+void strrev(char *str) {
+    int len = strlen(str);
+    int start = 0;
+    int end = len - 1;
+    
+    // Check if last char is newline
+    if (len > 0 && str[end] == '\n') {
+        end--;  // Don't reverse the newline
+    }
 
+    while (start < end) {
+        char temp = str[start];
+        str[start++] = str[end];
+        str[end--] = temp;
+    }
+}
 void xps_connection_read_handler(xps_connection_t *connection) {
 
   /* validate params */

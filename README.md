@@ -75,11 +75,12 @@ So the input buff still has the last 1kb data and the send function sends.
 This is a never ending loop and this programme continuosly sends the last 1kb data repeatedly.
 So reagardless of file size our xps will exhaust the ram available to it. 
 
-
-
 ### Issues in stage_10
 The modifications to xps_connection.c file are incomplete wherever there is an error due to bufflist and write_ready flag change it to source/sink->active and source/sink->pipe->buff_list.
 We are making pipes entries in core.h but in create core we are not creating vec_init of pipes please do that.
 
 ### Issues in stage_11
 In close_cb we are only closing if sink and source active flags are false but we also call close_cb for source does not exist so instead of directly checking for flag first check for existenance of source.
+
+### Issues in stage_12
+Take care of the file structs. There are two new to be added create their typedef and all in xps.h and struct itself in their respective .h files.

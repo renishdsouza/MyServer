@@ -12,5 +12,6 @@ char *get_remote_ip(u_int sock_fd);
 void vec_filter_null(vec_void_t *vec); // Fills NULLs in vec and updates n_nulls count
 
 // Other functions
+const char *get_file_ext(const char *file_path);
 
 #endif

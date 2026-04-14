@@ -150,15 +150,28 @@ void connection_sink_close_handler(void *ptr) {
   /*assert*/
   assert(ptr != NULL);
   logger(LOG_DEBUG, "connection_sink_close_handler()", "sink close handler called");
-  xps_pipe_sink_t *sink = ptr;
+  xps_pipe_sink_t *sink = (xps_pipe_sink_t *)ptr;
+  xps_connection_t *connection = (xps_connection_t *)sink->ptr;
   logger(LOG_DEBUG, "connection_sink_close_handler()", "sink active: %d", sink->active);
   if(sink->ptr == NULL){
     logger(LOG_DEBUG, "connection_sink_close_handler()", "sink ptr is null");
+    return;
   }
-  xps_connection_t *connection = sink->ptr;
+  if (connection == NULL) {
+    logger(LOG_DEBUG, "connection_sink_close_handler()", "connection is null");
+    return;
+  }
   logger(LOG_DEBUG, "connection_sink_close_handler()", "connection sock fd: %d", connection->sock_fd);
 
-  if (/*source not active AND sink not active*/sink->active == false && (sink->pipe->source == NULL || sink->pipe->source->active == false)) {
+  logger(LOG_DEBUG, "connection_sink_close_handler()", "checking if source and sink both are not active to close connection");
+  if(sink->pipe == NULL){
+    logger(LOG_DEBUG, "connection_sink_close_handler()", "sink pipe is null");
+    return;
+  }
+  if(sink->pipe->source == NULL){
+    logger(LOG_DEBUG, "connection_sink_close_handler()", "sink pipe source is null");
+  }
+  if (/*source not active AND sink not active*/(sink->active == false) && (connection->source == NULL || connection->source->active == false)) {
     logger(LOG_DEBUG, "connection_sink_close_handler()", "source and sink both not active");
     /*close connection*/
     connection_close(connection, false);

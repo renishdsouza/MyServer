@@ -332,7 +332,7 @@ bool handle_pipes(xps_loop_t *loop) {
   assert(loop != NULL);
   for (int i = 0; i < loop->core->pipes.length; i++) {
     xps_pipe_t *pipe = loop->core->pipes.data[i];
-    logger(LOG_DEBUG, "handle_pipes()", "checking pipe no. %d for read/write readiness", i + 1);
+    // logger(LOG_DEBUG, "handle_pipes()", "checking pipe no. %d for read/write readiness", i + 1);
     if (pipe == NULL){
       logger(LOG_DEBUG, "handle_pipes", "pipe is null");
       continue;
@@ -424,6 +424,10 @@ void filter_nulls(xps_core_t *core) {
   if(core->n_null_pipes > DEFAULT_NULLS_THRESH){
     vec_filter_null(&core->pipes);
     core->n_null_pipes = 0;
+  }
+  if(core->n_null_sessions > DEFAULT_NULLS_THRESH){
+    vec_filter_null(&core->sessions);
+    core->n_null_sessions = 0;
   }
 
 }

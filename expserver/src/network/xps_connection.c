@@ -93,10 +93,14 @@ void connection_source_close_handler(void *ptr) {
   logger(LOG_DEBUG, "connection_source_close_handler()", "source close handler called");
   xps_pipe_source_t *source = ptr;
   xps_connection_t *connection = source->ptr;
+  logger(LOG_DEBUG, "connection_source_close_handler()", "source active: %d", source->active);
 
-  if (source->active == false && (source->pipe == NULL || source->pipe->sink->active == false/*source not active AND sink not active*/))
-  /*close connection*/
-  connection_close(connection, false);
+  if (source->active == false &&
+      (source->pipe == NULL || source->pipe->sink == NULL || source->pipe->sink->active == false/*source not active AND sink not active*/)) {
+    /*close connection*/
+    logger(LOG_DEBUG, "connection_source_close_handler()", "source and sink both not active");
+    connection_close(connection, false);
+  }
 }
 
 void connection_sink_handler(void *ptr) {

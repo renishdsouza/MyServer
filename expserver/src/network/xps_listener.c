@@ -110,9 +110,15 @@ void listener_connection_handler(void *ptr) {
     socklen_t conn_addr_len = sizeof(conn_addr);
     // Accepting connection
     int conn_sock_fd = accept(listener->sock_fd, &conn_addr, &conn_addr_len);/* accept connection using accept() */
-    if( conn_sock_fd < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+    if (conn_sock_fd < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
       logger(LOG_DEBUG, "listener_connection_handler()", "no more incoming connections to accept");
       break;
+    }
+
+    if (conn_sock_fd < 0) {
+      logger(LOG_ERROR, "listener_connection_handler()", "accept() failed on listener port %d", listener->port);
+      perror("Error message");
+      continue;
     }
 
     if(make_socket_non_blocking(conn_sock_fd) != OK) {
@@ -131,31 +137,40 @@ void listener_connection_handler(void *ptr) {
     }
     client->listener = listener;
 
-    // Handle connection based on listener port (upstream or direct)
-    if (listener->port == 8001) {
-      /* create upstream connection to 127.0.0.1:3000 */
-      xps_connection_t *upstream = xps_upstream_create(listener->core, "127.0.0.1", 3000);
-      /*create pipe connection to  client source and upstream sink for the listener*/
-      xps_pipe_create(listener->core, DEFAULT_PIPE_BUFF_THRESH, client->source, upstream->sink);
-      /*create pipe connection to upstream source and client sink for the listener*/
-      xps_pipe_create(listener->core, DEFAULT_PIPE_BUFF_THRESH, upstream->source, client->sink);
-    }
-    else if(listener->port == 8002) {
-      int error;
-      xps_file_t *file = xps_file_create(listener->core, "../public/sample.txt", &error);
-      if(file == NULL) {
-        logger(LOG_ERROR, "listener_connection_handler()", "xps_file_create() failed with error code %d", error);
-        xps_connection_destroy(client);
-        continue;
-      }
-      xps_pipe_create(listener->core, DEFAULT_PIPE_BUFF_THRESH, file->source, client->sink);
-    }
-    else {
-      /* same as previous stages*/
-      //Creates pipe for the connection created
-      xps_pipe_create(listener->core, DEFAULT_PIPE_BUFF_THRESH, client->source, client->sink);
+    xps_session_t *session = xps_session_create(listener->core, client);
+    if (session == NULL) {
+      logger(LOG_ERROR, "listener_connection_handler()", "xps_session_create() failed");
+      xps_connection_destroy(client);
+      return;
     }
 
-    logger(LOG_INFO, "listener_connection_handler()", "new connection");
+    logger(LOG_INFO, "listener_connection_handler()", "new connection from %s to listener port %d", client->remote_ip, listener->port);
+
+    // Handle connection based on listener port (upstream or direct)
+    // if (listener->port == 8001) {
+    //   /* create upstream connection to 127.0.0.1:3000 */
+    //   xps_connection_t *upstream = xps_upstream_create(listener->core, "127.0.0.1", 3000);
+    //   /*create pipe connection to  client source and upstream sink for the listener*/
+    //   xps_pipe_create(listener->core, DEFAULT_PIPE_BUFF_THRESH, client->source, upstream->sink);
+    //   /*create pipe connection to upstream source and client sink for the listener*/
+    //   xps_pipe_create(listener->core, DEFAULT_PIPE_BUFF_THRESH, upstream->source, client->sink);
+    // }
+    // else if(listener->port == 8002) {
+    //   int error;
+    //   xps_file_t *file = xps_file_create(listener->core, "../public/sample.txt", &error);
+    //   if(file == NULL) {
+    //     logger(LOG_ERROR, "listener_connection_handler()", "xps_file_create() failed with error code %d", error);
+    //     xps_connection_destroy(client);
+    //     continue;
+    //   }
+    //   xps_pipe_create(listener->core, DEFAULT_PIPE_BUFF_THRESH, file->source, client->sink);
+    // }
+    // else {
+    //   /* same as previous stages*/
+    //   //Creates pipe for the connection created
+    //   xps_pipe_create(listener->core, DEFAULT_PIPE_BUFF_THRESH, client->source, client->sink);
+    // }
+
+    // logger(LOG_INFO, "listener_connection_handler()", "new connection");
   }
 }

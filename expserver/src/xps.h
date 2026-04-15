@@ -55,6 +55,7 @@ struct pipe_source_s;
 struct pipe_sink_s;
 struct xps_file_s;
 struct xps_keyval_s;
+struct xps_session_s;
 
 // Struct typedefs
 typedef struct xps_core_s xps_core_t;
@@ -68,6 +69,7 @@ typedef struct xps_pipe_source_s xps_pipe_source_t;
 typedef struct xps_pipe_sink_s xps_pipe_sink_t;
 typedef struct xps_file_s xps_file_t;
 typedef struct xps_keyval_s xps_keyval_t;
+typedef struct xps_session_s xps_session_t;
 
 // Function typedefs
 typedef void (*xps_handler_t)(void *ptr);
@@ -84,5 +86,6 @@ typedef void (*xps_handler_t)(void *ptr);
 #include "utils/xps_buffer.h"
 #include "disk/xps_mime.h"
 #include "disk/xps_file.h"
+#include "core/xps_session.h"
 
 #endif

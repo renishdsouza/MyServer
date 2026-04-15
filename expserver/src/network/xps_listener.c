@@ -143,10 +143,10 @@ void listener_connection_handler(void *ptr) {
     else if(listener->port == 8002) {
       int error;
       xps_file_t *file = xps_file_create(listener->core, "../public/sample.txt", &error);
-      xps_pipe_create(listener->core, DEFAULT_PIPE_BUFF_THRESH, client->source, client->sink);
-
       if(file == NULL) {
         logger(LOG_ERROR, "listener_connection_handler()", "xps_file_create() failed with error code %d", error);
+        xps_connection_destroy(client);
+        continue;
       }
       xps_pipe_create(listener->core, DEFAULT_PIPE_BUFF_THRESH, file->source, client->sink);
     }

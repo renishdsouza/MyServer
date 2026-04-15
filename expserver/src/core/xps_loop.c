@@ -348,21 +348,30 @@ bool handle_pipes(xps_loop_t *loop) {
     if (/*Pipe has source AND source is ready AND pipe is writable*/pipe->source != NULL && pipe->source->ready == true && xps_pipe_is_writable(pipe) == true){
       logger(LOG_DEBUG, "handle_pipes()", "handling source of pipe");
       pipe->source->handler_cb(pipe->source);//call connection_source_handler to write into  pipe
+      pipe = loop->core->pipes.data[i];
+      if (pipe == NULL) {
+        continue;
+      }
     }
 
     if (/*Pipe has sink AND sink is ready AND pipe is readable*/pipe->sink != NULL && pipe->sink->ready == true && xps_pipe_is_readable(pipe) == true) {
       logger(LOG_DEBUG, "handle_pipes()", "handling sink of pipe");
       pipe->sink->handler_cb(pipe->sink);//call connection_sink_handler to read from pipe
+      pipe = loop->core->pipes.data[i];
+      if (pipe == NULL) {
+        continue;
+      }
     }
 
-    if (/*Pipe has source and no sink*/pipe->source != NULL && pipe->sink == NULL) {
+    if (/*Pipe has source and no sink*/pipe->source != NULL && pipe->sink == NULL && pipe->source->active == true) {
       logger(LOG_DEBUG, "handle_pipes()", "pipe has source but no sink. marking source not ready and active and calling close_cb");
       pipe->source->active = false;
       pipe->source->close_cb(pipe->source);
       logger(LOG_DEBUG, "handle_pipes()", "handled source of pipe with no sink");
+      continue;
     }
 
-    if (/*Pipe has sink and no source and pipe is not readable*/pipe->sink != NULL && pipe->source == NULL && xps_pipe_is_readable(pipe) == false) {
+    if (/*Pipe has sink and no source and pipe is not readable*/pipe->sink != NULL && pipe->source == NULL && pipe->sink->active == true && xps_pipe_is_readable(pipe) == false) {
       logger(LOG_DEBUG, "handle_pipes()", "pipe has sink but no source and is not readable. marking sink not ready and active and calling close_cb");
       pipe->sink->active = false;
       if(pipe->sink->close_cb != NULL){
@@ -371,6 +380,7 @@ bool handle_pipes(xps_loop_t *loop) {
         logger(LOG_DEBUG, "handle_pipes()", "close_cb is NULL. skipping");
       }
       logger(LOG_DEBUG, "handle_pipes()", "handled sink of pipe with no source and not readable");
+      continue;
     }
 
   }
@@ -381,16 +391,16 @@ bool handle_pipes(xps_loop_t *loop) {
       logger(LOG_DEBUG, "handle_pipes", "pipe is null");
       continue;
     }
-    if (/*Pipe has source AND source is ready AND pipe is writable*/pipe->source != NULL && pipe->source->ready == true && xps_pipe_is_writable(pipe) == true){
+    if (/*Pipe has source AND source is ready AND pipe is writable*/pipe->source != NULL && pipe->source->ready == true && pipe->source->active == true && xps_pipe_is_writable(pipe) == true){
       return true;
     }
-    if (/*Pipe has sink AND sink is ready AND pipe is readable*/pipe->sink != NULL && pipe->sink->ready == true && xps_pipe_is_readable(pipe) == true) {
+    if (/*Pipe has sink AND sink is ready AND pipe is readable*/pipe->sink != NULL && pipe->sink->ready == true && pipe->sink->active == true && xps_pipe_is_readable(pipe) == true) {
       return true;
     }
-    if (/*Pipe has source and no sink*/pipe->source != NULL && pipe->sink == NULL) {
+    if (/*Pipe has source and no sink*/pipe->source != NULL && pipe->sink == NULL && pipe->source->active == true) {
       return true;
     }
-    if (/*Pipe has sink and no source and pipe is not readable*/pipe->sink != NULL && pipe->source == NULL && xps_pipe_is_readable(pipe) == false) {
+    if (/*Pipe has sink and no source and pipe is not readable*/pipe->sink != NULL && pipe->source == NULL && pipe->sink->active == true && xps_pipe_is_readable(pipe) == false) {
       return true;
     }
   }

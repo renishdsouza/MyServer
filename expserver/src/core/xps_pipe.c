@@ -94,7 +94,7 @@ int xps_pipe_attach_source(xps_pipe_t *pipe, xps_pipe_source_t *source) {
   assert(source != NULL);
 
   /*check whether pipe already has a source and return E_FAIL*/
-  if(pipe->source != NULL){
+  if(pipe->source != NULL || source->pipe != NULL){
     return E_FAIL;
   }
   pipe->source = source;/*fill this*/
@@ -124,7 +124,7 @@ int xps_pipe_attach_sink(xps_pipe_t *pipe, xps_pipe_sink_t *sink) {
   assert(sink != NULL);
 
   /*check whether pipe already has a sink and return E_FAIL*/
-  if(pipe->sink != NULL){
+  if(pipe->sink != NULL || sink->pipe != NULL){
     return E_FAIL;
   }
 
@@ -186,11 +186,26 @@ xps_pipe_t *xps_pipe_create(xps_core_t *core, size_t buff_thresh, xps_pipe_sourc
   pipe->buff_thresh = buff_thresh;/*fill this*/
 
   /* Add pipe to 'pipes' list of core (see core module below)*/
-  vec_push(&core->pipes, pipe);
+  if (vec_push(&core->pipes, pipe) != OK) {
+    logger(LOG_ERROR, "xps_pipe_create()", "vec_push() failed");
+    xps_buffer_list_destroy(buff_list);
+    free(pipe);
+    return NULL;
+  }
 
   /*Attach source and sink to pipe*/
-  xps_pipe_attach_sink(pipe, sink);
-  xps_pipe_attach_source(pipe, source);
+  if (xps_pipe_attach_sink(pipe, sink) != OK) {
+    logger(LOG_ERROR, "xps_pipe_create()", "xps_pipe_attach_sink() failed");
+    xps_pipe_destroy(pipe);
+    return NULL;
+  }
+
+  if (xps_pipe_attach_source(pipe, source) != OK) {
+    logger(LOG_ERROR, "xps_pipe_create()", "xps_pipe_attach_source() failed");
+    xps_pipe_detach_sink(pipe);
+    xps_pipe_destroy(pipe);
+    return NULL;
+  }
 
   /*Make both source and sink of pipe active*/
   pipe->source->active = true;

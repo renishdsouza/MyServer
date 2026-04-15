@@ -155,12 +155,18 @@ void connection_sink_close_handler(void *ptr) {
   logger(LOG_DEBUG, "connection_sink_close_handler()", "sink active: %d", sink->active);
   if(sink->ptr == NULL){
     logger(LOG_DEBUG, "connection_sink_close_handler()", "sink ptr is null");
+    return;
+  }
+  if (connection == NULL) {
+    logger(LOG_DEBUG, "connection_sink_close_handler()", "connection is null");
+    return;
   }
   logger(LOG_DEBUG, "connection_sink_close_handler()", "connection sock fd: %d", connection->sock_fd);
 
   logger(LOG_DEBUG, "connection_sink_close_handler()", "checking if source and sink both are not active to close connection");
   if(sink->pipe == NULL){
     logger(LOG_DEBUG, "connection_sink_close_handler()", "sink pipe is null");
+    return;
   }
   if(sink->pipe->source == NULL){
     logger(LOG_DEBUG, "connection_sink_close_handler()", "sink pipe source is null");

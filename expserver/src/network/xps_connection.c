@@ -113,6 +113,8 @@ void connection_sink_handler(void *ptr) {
     return;
   }
 
+  logger(LOG_DEBUG, "connection_sink_handler()", "sink handler called to read data to client %d bytes",sink->pipe->buff_list->len);
+
   xps_buffer_t *buff = xps_pipe_sink_read(sink, sink->pipe->buff_list->len);/*read from pipe*/
   if (buff == NULL) {
     logger(LOG_ERROR, "connection_sink_handler()", "xps_pipe_sink_read() failed");
@@ -123,7 +125,10 @@ void connection_sink_handler(void *ptr) {
   // Write to socket
   int write_n = send(connection->sock_fd, buff->data, buff->len/*fill this*/, MSG_NOSIGNAL);
 
+  logger(LOG_DEBUG, "connection_sink_handler()", "send() called to write data to client %d bytes", write_n);
+
   /*destroy buff*/
+  logger(LOG_DEBUG, "connection_sink_handler()", "destroying buffer after writing to client");
   xps_buffer_destroy(buff);
 
   // Socket would block

@@ -18,6 +18,8 @@
 #include <limits.h>
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
+#include <linux/limits.h>
 
 // 3rd party libraries
 #include "lib/vec/vec.h" // https://github.com/rxi/vec
@@ -28,6 +30,7 @@
 #define DEFAULT_BUFFER_SIZE 100000 // 100 KB
 #define DEFAULT_PIPE_BUFF_THRESH 1000000 // 1 MB
 #define DEFAULT_NULLS_THRESH 32
+#define SERVER_NAME "eXpServer"
 
 // Error constants
 #define OK 0            // Success
@@ -56,6 +59,8 @@ struct pipe_sink_s;
 struct xps_file_s;
 struct xps_keyval_s;
 struct xps_session_s;
+struct xps_http_req_s;
+
 
 // Struct typedefs
 typedef struct xps_core_s xps_core_t;
@@ -70,6 +75,7 @@ typedef struct xps_pipe_sink_s xps_pipe_sink_t;
 typedef struct xps_file_s xps_file_t;
 typedef struct xps_keyval_s xps_keyval_t;
 typedef struct xps_session_s xps_session_t;
+typedef struct xps_http_req_s xps_http_req_t;
 
 // Function typedefs
 typedef void (*xps_handler_t)(void *ptr);
@@ -87,5 +93,7 @@ typedef void (*xps_handler_t)(void *ptr);
 #include "disk/xps_mime.h"
 #include "disk/xps_file.h"
 #include "core/xps_session.h"
+#include "http/xps_http.h"
+#include "http/xps_http_req.h"
 
 #endif

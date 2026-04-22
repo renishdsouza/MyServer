@@ -4,27 +4,49 @@ void file_source_handler(void *ptr);
 void file_source_close_handler(void *ptr);
 
 static char *resolve_public_path(void) {
+  logger(LOG_DEBUG, "resolve_public_path()", "resolving public path");
   char *resolved_public = realpath("public", NULL);
-  if (resolved_public != NULL)
+  if (resolved_public != NULL){
+    logger(LOG_DEBUG, "resolve_public_path()", "resolved public path: %s", resolved_public);
     return resolved_public;
+  }
 
-  return realpath("../public", NULL);
+  resolved_public = realpath("../public", NULL);
+  if (resolved_public != NULL){
+    logger(LOG_DEBUG, "resolve_public_path()", "resolved public path: %s", resolved_public);
+    return resolved_public;
+  }
+  return NULL;
 }
 
 static char *resolve_file_path(const char *file_path) {
+  logger(LOG_DEBUG, "resolve_file_path()", "resolving file path: %s", file_path);
   char *resolved = realpath(file_path, NULL);
-  if (resolved != NULL)
+  if (resolved != NULL){
+    logger(LOG_DEBUG, "resolve_file_path()", "resolved file path: %s", resolved);
     return resolved;
+  }
 
-  if (file_path[0] == '/')
+  if (file_path[0] == '/'){
+    logger(LOG_DEBUG, "resolve_file_path()", "file path is absolute: %s", file_path);
     return NULL;
+  }
 
   char alt_path[PATH_MAX];
   int written = snprintf(alt_path, sizeof(alt_path), "../%s", file_path);
-  if (written <= 0 || written >= (int)sizeof(alt_path))
+  if (written <= 0 || written >= (int)sizeof(alt_path)){
+    logger(LOG_DEBUG, "resolve_file_path()", "failed to create alternative file path");
     return NULL;
+  }
+  
+  resolved = realpath(alt_path, NULL);
+  if (resolved != NULL){
+    logger(LOG_DEBUG, "resolve_file_path()", "resolved file path: %s", resolved);
+    return resolved;
+  }
 
-  return realpath(alt_path, NULL);
+  logger(LOG_DEBUG, "resolve_file_path()", "realpath() failed for both original and alternative file paths");
+  return NULL;
 }
 
 xps_file_t *xps_file_create(xps_core_t *core, const char *file_path, int *error) {
@@ -33,6 +55,8 @@ xps_file_t *xps_file_create(xps_core_t *core, const char *file_path, int *error)
   assert(file_path != NULL);
   assert(error != NULL);
 
+  logger(LOG_DEBUG, "xps_file_create()", "creating file for path: %s", file_path);
+
   *error = E_FAIL;
   /*check if file is inside the public directory*/
   char *resolved_path = resolve_file_path(file_path);
@@ -40,12 +64,18 @@ xps_file_t *xps_file_create(xps_core_t *core, const char *file_path, int *error)
 
   if (resolved_path == NULL || resolved_public == NULL) {
     logger(LOG_ERROR, "xps_file_create()", "realpath() failed");
+    if(resolved_path == NULL){
+      logger(LOG_ERROR, "xps_file_create()", "realpath() failed for file path");
+      *error = E_NOTFOUND;
+    }
     /*free both path*/
     free(resolved_path);
     /*close file object*/
     free(resolved_public);
     return NULL;
   }
+
+  logger(LOG_DEBUG, "xps_file_create()", "resolved file path: %s, resolved public path: %s", resolved_path, resolved_public);
 
   size_t public_len = strlen(resolved_public);
   bool inside_public = strncmp(resolved_path, resolved_public, public_len) == 0 && (resolved_path[public_len] == '/' || resolved_path[public_len] == '\0');
@@ -60,6 +90,8 @@ xps_file_t *xps_file_create(xps_core_t *core, const char *file_path, int *error)
     return NULL;
   }
 
+  logger(LOG_DEBUG, "xps_file_create()", "file is inside public directory");
+
   /*free both path*/
 
   /*check if others have read permission*/
@@ -67,11 +99,16 @@ xps_file_t *xps_file_create(xps_core_t *core, const char *file_path, int *error)
   if (stat(file_path, &file_stat) != 0) {
     logger(LOG_ERROR, "xps_file_create()", "stat() failed");
     perror("Error message");
+    if(errno == ENOENT){
+      *error = E_NOTFOUND;
+    }
     /*close file object*/
     free(resolved_path);
     free(resolved_public);
     return NULL;
   }
+
+  logger(LOG_DEBUG, "xps_file_create()", "checked file permissions with stat()");
 
   if (!(file_stat.st_mode & S_IROTH)) {
     logger(LOG_WARNING, "xps_file_create()", "others do not have read permission");
@@ -85,6 +122,8 @@ xps_file_t *xps_file_create(xps_core_t *core, const char *file_path, int *error)
   // Getting size of file from stat (already called above)
   long temp_size = file_stat.st_size;
 
+  logger(LOG_DEBUG, "xps_file_create()", "got file size from stat(): %ld bytes", temp_size);
+
   // Opening file
   FILE *file_struct = fopen(file_path, "rb");
   /*handle EACCES,ENOENT or any other error*/
@@ -92,9 +131,12 @@ xps_file_t *xps_file_create(xps_core_t *core, const char *file_path, int *error)
     if(errno == EACCES) {
       logger(LOG_ERROR, "xps_file_create()", "fopen() failed with EACCES");
       *error = E_PERMISSION;
-    } else if (errno == ENOENT) {
+    }
+    else if (errno == ENOENT) {
+      *error = E_NOTFOUND;
       logger(LOG_ERROR, "xps_file_create()", "fopen() failed with ENOENT");
-    } else {
+    }
+    else {
       logger(LOG_ERROR, "xps_file_create()", "fopen() failed with unknown error");
     }
     /*logs EACCES,ENOENT or any other error*/
@@ -102,6 +144,8 @@ xps_file_t *xps_file_create(xps_core_t *core, const char *file_path, int *error)
     free(resolved_public);
     return NULL;
   }
+
+  logger(LOG_DEBUG, "xps_file_create()", "opened file successfully");
 
   const char *mime_type = xps_get_mime(resolved_path);/*get mime type*/
 
@@ -115,6 +159,9 @@ xps_file_t *xps_file_create(xps_core_t *core, const char *file_path, int *error)
     free(resolved_public);
     return NULL;
   }
+
+  logger(LOG_DEBUG, "xps_file_create()", "allocated memory for file struct");
+
   xps_pipe_source_t *source =
     xps_pipe_source_create((void *)file, file_source_handler, file_source_close_handler);
   /*if source is null, close file_struct and return*/
@@ -127,6 +174,8 @@ xps_file_t *xps_file_create(xps_core_t *core, const char *file_path, int *error)
     free(file);
     return NULL;
   }
+
+  logger(LOG_DEBUG, "xps_file_create()", "created pipe source for file");
 
   // Init values
   source->ready = true;
@@ -149,6 +198,8 @@ void xps_file_destroy(xps_file_t *file) {
   /*assert*/
   assert(file != NULL);
 
+  logger(LOG_DEBUG, "xps_file_destroy()", "destroying file struct for path: %s", file->file_path);
+
   /*fill as mentioned above*/
   if(file->file_struct != NULL) {
     fclose(file->file_struct);
@@ -169,6 +220,8 @@ void file_source_handler(void *ptr) {
   /*assert*/
   assert(ptr != NULL);
 
+  logger(LOG_DEBUG, "file_source_handler()", "file source handler called");
+
   xps_pipe_source_t *source = ptr;
   xps_file_t *file = (xps_file_t *)source->ptr;
   /*get file from source ptr*/
@@ -182,9 +235,13 @@ void file_source_handler(void *ptr) {
     return;
   }
 
+  logger(LOG_DEBUG, "file_source_handler()", "created buffer to read file data");
+
   // Read from file
   size_t read_n = fread(buff->data, 1, buff->size, file->file_struct);
   buff->len = read_n;
+
+  logger(LOG_DEBUG, "file_source_handler()", "read %zu bytes from file", read_n);
 
   // Checking for read errors
   if (ferror(file->file_struct)) {
@@ -212,12 +269,18 @@ void file_source_handler(void *ptr) {
     return;
   }
 	/*deallocate buff*/
+
+  logger(LOG_DEBUG, "file_source_handler()", "wrote data to pipe from buffer");
+
   xps_buffer_destroy(buff);
 }
 
 void file_source_close_handler(void *ptr) {
   /*assert*/
   assert(ptr != NULL);
+
+  logger(LOG_DEBUG, "file_source_close_handler()", "file source close handler called");
+
 	xps_pipe_source_t *source = ptr;
   /*get file from source ptr*/
   xps_file_t *file = (xps_file_t *)source->ptr;

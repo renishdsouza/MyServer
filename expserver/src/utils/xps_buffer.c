@@ -12,6 +12,8 @@ xps_buffer_t *xps_buffer_create(size_t size, size_t len, u_char *data) {
     return NULL;
   }
 
+  logger(LOG_DEBUG, "xps_buffer_create()", "allocated memory for buffer struct");
+
   // Alloc memory for 'data' if it is NULL
   if (data == NULL)
     data = malloc(size);
@@ -21,6 +23,7 @@ xps_buffer_t *xps_buffer_create(size_t size, size_t len, u_char *data) {
     free(buff);
     return NULL;
   }
+  logger(LOG_DEBUG, "xps_buffer_create()", "allocated memory for buffer data");
 
   // Init values
   buff->size = size;
@@ -32,9 +35,15 @@ xps_buffer_t *xps_buffer_create(size_t size, size_t len, u_char *data) {
 }
 
 void xps_buffer_destroy(xps_buffer_t *buff) {
+  if(buff == NULL) {
+    logger(LOG_ERROR, "xps_buffer_destroy()", "buff is NULL");
+    return;
+  }
   assert(buff != NULL);
   free(buff->data);
+  logger(LOG_DEBUG, "xps_buffer_destroy()", "freed buffer data");
   free(buff);
+  logger(LOG_DEBUG, "xps_buffer_destroy()", "freed buffer %p", buff);
 }
 
 xps_buffer_t *xps_buffer_duplicate(xps_buffer_t *buff) {
@@ -78,7 +87,11 @@ void xps_buffer_list_destroy(xps_buffer_list_t *buff_list) {
   // Destroy buffers in the list
   for (int i = 0; i < buff_list->list.length; i++) {
     xps_buffer_t *curr_buff = buff_list->list.data[i];
-    xps_buffer_destroy(curr_buff);
+    // xps_buffer_destroy(curr_buff);
+    if(curr_buff != NULL) {
+      logger(LOG_DEBUG, "xps_buffer_list_destroy()", "destroying buffer %p in buffer list", curr_buff);
+      xps_buffer_destroy(curr_buff);
+    }
   }
   vec_deinit(&(buff_list->list));
 

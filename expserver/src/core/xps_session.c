@@ -487,7 +487,7 @@ void session_process_request(xps_session_t *session) {
 
   if (session->http_req == NULL || session->http_req->path == NULL) {
     sprintf(reply, "HTTP/1.1 400 Bad Request\r\nServer: eXpServer\r\n\r\n");
-    xps_buffer_t *buff = xps_buffer_create(strlen(reply)+1, strlen(reply)+1, strdup(reply));
+    xps_buffer_t *buff = xps_buffer_create(strlen(reply)+1, strlen(reply), strdup(reply));
     set_to_client_buff(session, buff);
     free(reply);
     return;
@@ -502,17 +502,17 @@ void session_process_request(xps_session_t *session) {
 
   if (error == E_PERMISSION) {
     sprintf(reply, "HTTP/1.1 403 Forbidden\r\nServer: eXpServer\r\n\r\n");
-    xps_buffer_t *buff = xps_buffer_create(strlen(reply)+1, strlen(reply)+1, strdup(reply));
+    xps_buffer_t *buff = xps_buffer_create(strlen(reply)+1, strlen(reply), strdup(reply));
     set_to_client_buff(session, buff);
 
   } else if (error == E_NOTFOUND) {
     sprintf(reply, "HTTP/1.1 404 Not Found\r\nServer: eXpServer\r\n\r\n");
-    xps_buffer_t *buff = xps_buffer_create(strlen(reply)+1, strlen(reply)+1, strdup(reply));
+    xps_buffer_t *buff = xps_buffer_create(strlen(reply)+1, strlen(reply), strdup(reply));
     set_to_client_buff(session, buff);
 
   } else if (error != OK) {
     sprintf(reply, "HTTP/1.1 500 Internal Server Error\r\nServer: eXpServer\r\n\r\n");
-    xps_buffer_t *buff = xps_buffer_create(strlen(reply)+1, strlen(reply)+1, strdup(reply));
+    xps_buffer_t *buff = xps_buffer_create(strlen(reply)+1, strlen(reply), strdup(reply));
     set_to_client_buff(session, buff);
 
   } else {
@@ -522,7 +522,7 @@ void session_process_request(xps_session_t *session) {
     } else {
       sprintf(reply, "HTTP/1.1 200 OK\r\nServer: eXpServer\r\n\r\n");
     }
-    xps_buffer_t *buff = xps_buffer_create(strlen(reply)+1, strlen(reply)+1, strdup(reply));
+    xps_buffer_t *buff = xps_buffer_create(strlen(reply)+1, strlen(reply), strdup(reply));
     set_to_client_buff(session, buff);
 
     if (xps_pipe_create(session->core, DEFAULT_PIPE_BUFF_THRESH, session->file->source, session->file_sink) == NULL) {

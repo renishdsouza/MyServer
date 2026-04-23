@@ -31,6 +31,8 @@ void connection_source_handler(void *ptr) {
 
   if(buff->data == NULL){
     logger(LOG_DEBUG, "connection_source_handler()", "malloc() failed for buff->data %d bytes", buff->size);
+    xps_buffer_destroy(buff);
+    return;
   }
   /*Read from socket using recv()*/
   ssize_t read_n = recv(connection->sock_fd, buff->data, buff->size, 0);
@@ -72,7 +74,7 @@ void connection_source_handler(void *ptr) {
 
   // strrev(buff->data);
 
-  if (/*write into pipe*/xps_pipe_source_write(source, buff) != OK) {
+  if (/*write into pipe*/xps_pipe_source_write(connection->source, buff) != OK) {
     logger(LOG_ERROR, "connection_source_handler()", "xps_pipe_source_write() failed");
     /*destroy buff*/
     xps_buffer_destroy(buff);
@@ -336,6 +338,12 @@ xps_connection_t *xps_connection_create(xps_core_t *core, u_int sock_fd){
     return NULL;
   }
 
+  // Init values BEFORE attaching to loop
+  connection->core = core;
+  connection->sock_fd = sock_fd;
+  connection->listener = NULL;
+  connection->remote_ip = get_remote_ip(sock_fd);
+
   /* attach sock_fd to epoll */
   if(xps_loop_attach(core->loop, sock_fd, EPOLLIN | EPOLLOUT | EPOLLET, connection, connection_loop_read_handler, connection_loop_write_handler, connection_loop_close_handler) < 0) {
     logger(LOG_ERROR, "xps_connection_create()", "xps_loop_attach() failed");
@@ -344,12 +352,6 @@ xps_connection_t *xps_connection_create(xps_core_t *core, u_int sock_fd){
     free(connection);
     return NULL;
   }
-
-  // Init values
-  connection->core = core;
-  connection->sock_fd = sock_fd;
-  connection->listener = NULL;
-  connection->remote_ip = get_remote_ip(sock_fd);
 
   /* add connection to 'connections' list */
   vec_push(&core->connections, connection);

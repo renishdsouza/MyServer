@@ -15,7 +15,7 @@ void vec_filter_null(vec_void_t *vec); // Fills NULLs in vec and updates n_nulls
 struct addrinfo *xps_getaddrinfo(const char *host, u_int port);
 int make_socket_non_blocking(u_int sock_fd);
 char *get_remote_ip(u_int sock_fd);
-void vec_filter_null(vec_void_t *v) {
+void vec_filter_null(vec_void_t *v);
 const char *get_file_ext(const char *file_path);
 char *str_from_ptrs(const char *start, const char *end);
 bool str_starts_with(const char *str, const char *prefix);

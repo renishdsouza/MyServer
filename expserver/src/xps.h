@@ -60,7 +60,7 @@ struct xps_file_s;
 struct xps_keyval_s;
 struct xps_session_s;
 struct xps_http_req_s;
-
+struct xps_http_res_s;
 
 // Struct typedefs
 typedef struct xps_core_s xps_core_t;
@@ -76,6 +76,7 @@ typedef struct xps_file_s xps_file_t;
 typedef struct xps_keyval_s xps_keyval_t;
 typedef struct xps_session_s xps_session_t;
 typedef struct xps_http_req_s xps_http_req_t;
+typedef struct xps_http_res_s xps_http_res_t;
 
 // Function typedefs
 typedef void (*xps_handler_t)(void *ptr);
@@ -95,5 +96,5 @@ typedef void (*xps_handler_t)(void *ptr);
 #include "core/xps_session.h"
 #include "http/xps_http.h"
 #include "http/xps_http_req.h"
-
+#include "http/xps_http_res.h"
 #endif

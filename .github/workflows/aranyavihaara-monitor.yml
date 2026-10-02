@@ -1,0 +1,44 @@
+name: Aranyavihaara Trek Monitor
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run monitor
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DISTRICT_ID: "24"
+          STATE_FILE: ".github/monitor-state/aranyavihaara_treks.json"
+        run: python .github/scripts/aranyavihaara_monitor.py
+
+      - name: Commit updated state
+        run: |
+          if git diff --quiet -- .github/monitor-state/aranyavihaara_treks.json; then
+            echo "No state changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/monitor-state/aranyavihaara_treks.json
+          git commit -m "chore: update Aranyavihaara monitor state"
+          git push

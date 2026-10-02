@@ -6,6 +6,18 @@ For any clarification/issue/suggestion do create an issue and/or contact me via 
 Do submit an pull request if you have done any work.
 # Thankyou !!!
 
+## Aranyavihaara trek monitor (GitHub Actions)
+- Workflow: `/home/runner/work/MyServer/MyServer/.github/workflows/aranyavihaara-monitor.yml`
+- Script: `/home/runner/work/MyServer/MyServer/.github/scripts/aranyavihaara_monitor.py`
+- Runs every 15 minutes and on manual dispatch.
+- It stores trek state in `.github/monitor-state/aranyavihaara_treks.json` and sends Telegram alerts only for new treks.
+
+### Required repository secrets
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHAT_ID`
+
+After adding secrets, run the workflow once with **Run workflow** to initialize state.
+
 ### Isuues with vec library
 The vec_find function needs the same input as the array type i.e. You can't send a comparision function. So just use for loop.
 ### Issues in phase 0
